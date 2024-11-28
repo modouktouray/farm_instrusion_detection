@@ -10,7 +10,7 @@ st.title("Farm intrusion detection")
 #load model, set cache to prevent reloading
 @st.cache_resource
 def load_model():
-    model=tf.keras.models.load_model('models/efficientnet_model.h5')
+    model=tf.keras.models.load_model('models/inceptionV3_model.h5')
     return model
 
 with st.spinner("Loading Model...."):
@@ -24,7 +24,7 @@ def load_image(image):
     img=tf.image.decode_jpeg(image,channels=3)
     img=tf.cast(img,tf.float32)
     img/=255.0
-    img=tf.image.resize(img,(224,224))
+    img=tf.image.resize(img,(None,299,2299,3))
     img=tf.expand_dims(img,axis=0)
     return img
 

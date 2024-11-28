@@ -3,9 +3,16 @@ import tensorflow as tf
 from tensorflow import keras
 import requests
 import numpy as np
-
+import os
+from dotenv import load_dotenv
 #Title
 st.title("Farm intrusion detection")
+
+# Load environment variables from .env file
+load_dotenv()
+account_sid = os.getenv('TWILIO_ACCOUNT_SID')
+auth_token = os.getenv('TWILIO_AUTH_TOKEN')
+twilio_number = os.getenv('TWILIO_PHONE_NUMBER')
 
 #load model, set cache to prevent reloading
 @st.cache_resource
@@ -28,6 +35,20 @@ def load_image(image):
     img=tf.expand_dims(img,axis=0)
     return img
 
+def send_sms(predicted_class, confidence, phone_number):
+    # Twilio credentials
+    account_sid = os.getenv('TWILIO_ACCOUNT_SID')  
+    auth_token = os.getenv('TWILIO_AUTH_TOKEN')  
+    twilio_number = os.getenv('TWILIO_PHONE_NUMBER') 
+
+    client = Client(account_sid, auth_token)
+
+    message = f"Farm Intrusion Alert!\nPredicted Class: {predicted_class}\nConfidence: {confidence:.2f}%"
+    client.messages.create(
+        body=message,
+        from_=twilio_number,
+        to=phone_number
+    )
 #Get image URL from user
 image_path = st.text_input("Enter Image URL to classify...")
 # Get image from URL and predict
@@ -36,19 +57,29 @@ if image_path:
         # Fetch the image content
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
         response = requests.get(image_path, headers=headers)
-        response.raise_for_status()  # Ensure we got a valid response
+        response.raise_for_status()  # Raise an exception for HTTP errors
         
         content = response.content
-        st.write("Predicting Class...")
+        st.write("Predicting class...")
+        
         with st.spinner("Classifying..."):
+            # Preprocess and predict
             img_tensor = load_image(content)
-            pred = model.predict(img_tensor)
-            pred_class = classes[np.argmax(pred)]
-            st.write("Predicted Class:", pred_class)
-            st.image(content, use_container_width=True)
+            pred = model.predict(img_tensor)[0][0]  # Get prediction
+            pred_class = classes[1] if pred > 0.5 else classes[0]  # Threshold at 0.5
+            confidence = pred if pred > 0.5 else 1 - pred
+            
+            # Display results
+            st.write(f"**Predicted Class:** {pred_class}")
+            st.write(f"**Confidence:** {confidence * 100:.2f}%")
+            st.image(content, caption=f"Classified as: {pred_class}", use_container_width=True)
+            
+            # Send SMS notification
+            send_sms(pred_class, confidence * 100, phone_number)
+            st.success("SMS notification sent!")
     except requests.exceptions.RequestException as e:
-        st.write("Failed to fetch image. Please check the URL.")
-        st.write(f"Error: {e}")
+        st.error("Failed to fetch image. Please check the URL.")
+        st.error(f"Error: {e}")
     except Exception as e:
-        st.write("An error occurred during processing.")
-        st.write(f"Error: {e}")
+        st.error("An error occurred during processing.")
+        st.error(f"Error: {e}")

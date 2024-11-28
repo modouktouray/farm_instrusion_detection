@@ -3,16 +3,9 @@ import tensorflow as tf
 from tensorflow import keras
 import requests
 import numpy as np
-import os
-from dotenv import load_dotenv
+
 #Title
 st.title("Farm intrusion detection")
-
-# Load environment variables from .env file
-load_dotenv()
-account_sid = os.getenv('TWILIO_ACCOUNT_SID')
-auth_token = os.getenv('TWILIO_AUTH_TOKEN')
-twilio_number = os.getenv('TWILIO_PHONE_NUMBER')
 
 #load model, set cache to prevent reloading
 @st.cache_resource
@@ -35,20 +28,6 @@ def load_image(image):
     img=tf.expand_dims(img,axis=0)
     return img
 
-def send_sms(predicted_class, confidence, phone_number):
-    # Twilio credentials
-    account_sid = os.getenv('TWILIO_ACCOUNT_SID')  
-    auth_token = os.getenv('TWILIO_AUTH_TOKEN')  
-    twilio_number = os.getenv('TWILIO_PHONE_NUMBER') 
-
-    client = Client(account_sid, auth_token)
-
-    message = f"Farm Intrusion Alert!\nPredicted Class: {predicted_class}\nConfidence: {confidence:.2f}%"
-    client.messages.create(
-        body=message,
-        from_=twilio_number,
-        to=phone_number
-    )
 #Get image URL from user
 image_path = st.text_input("Enter Image URL to classify...")
 # Get image from URL and predict
@@ -73,10 +52,6 @@ if image_path:
             st.write(f"**Predicted Class:** {pred_class}")
             st.write(f"**Confidence:** {confidence * 100:.2f}%")
             st.image(content, caption=f"Classified as: {pred_class}", use_container_width=True)
-            
-            # Send SMS notification
-            send_sms(pred_class, confidence * 100, phone_number)
-            st.success("SMS notification sent!")
     except requests.exceptions.RequestException as e:
         st.error("Failed to fetch image. Please check the URL.")
         st.error(f"Error: {e}")

@@ -16,7 +16,7 @@ def load_model():
 with st.spinner("Loading Model...."):
     model=load_model()
     
-#classes for CIFAR-10 dataset
+#classes
 classes=["humans", "monkeys"]
 
 # image preprocessing
